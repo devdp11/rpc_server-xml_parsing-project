@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Country {
+  id         String   @id @default(uuid()) @map("id")
+  name       String   @unique
+  geom       Unsupported("geometry")
+  createdOn  DateTime @default(now()) @map("created_on")
+  updatedOn  DateTime @updatedAt @map("updated_on")
+
+  brands     Brand[]
+
+  @@map("countries")
+}
+
+model Brand {
+  id         String   @id @default(uuid()) @map("id")
+  name       String   @unique
+  createdOn  DateTime @default(now()) @map("created_on")
+  updatedOn  DateTime @updatedAt @map("updated_on")
+  country_id String
+  country    Country @relation(fields: [country_id], references: [id])
+  
+  models     Model[]
+  vehicles   Vehicle[]
+
+  @@map("brands")
+}
+
+model Model {
+  id         String   @id @default(uuid()) @map("id")
+  name       String   @unique
+  createdOn  DateTime @default(now()) @map("created_on")
+  updatedOn  DateTime @updatedAt @map("updated_on")
+  brand_id   String
+  brand      Brand    @relation(fields: [brand_id], references: [id])
+
+  vehicles   Vehicle[]
+
+  @@map("models")
+}
+
+model Style {
+  id         String   @id @default(uuid()) @map("id")
+  name       String   @unique
+  createdOn  DateTime @default(now()) @map("created_on")
+  updatedOn  DateTime @updatedAt @map("updated_on")
+
+  vehicles   Vehicle[]
+
+  @@map("styles")
+}
+
+model Vehicle {
+  id          String   @id @default(uuid()) @map("id")
+  year        Int
+  horsepower  Int
+  cylinders   Int
+  doors       Int
+  highway_mpg Int
+  city_mpg    Int
+  popularity  Int
+  msrp        Int
+  createdOn   DateTime @default(now()) @map("created_on")
+  updatedOn   DateTime @updatedAt @map("updated_on")
+  brand_id          String
+  model_id          String
+  style_id          String
+
+  brand             Brand         @relation(fields: [brand_id], references: [id])
+  model             Model         @relation(fields: [model_id], references: [id])
+  style             Style         @relation(fields: [style_id], references: [id])
+
+  @@map("vehicles")
+}
