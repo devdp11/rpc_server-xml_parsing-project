@@ -34,6 +34,19 @@ services:
     depends_on:
       - db-xml
 
+    # Container that automatically checks xml file existence on database
+  watcher:
+    container_name: watcher
+    build: docker/images/golang
+    volumes:
+      - ./src/daemon/watcher:/usr/src/app
+      - ./docker/volumes/xml:/xml
+    environment:
+      USE_DEV_MODE: ${USE_DEV_MODE}
+      NUM_XML_PARTS: ${NUM_XML_PARTS}
+    depends_on:
+      - db-xml
+
   # Container that automatically migrates data from db-xml to db-rel
   migrator:
     container_name: migrator
