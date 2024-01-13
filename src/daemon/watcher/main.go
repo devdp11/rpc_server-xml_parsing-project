@@ -11,56 +11,45 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func sayHelloWorld() {
-	fmt.Println("Hello, World!!")
-}
-
-func checkErr(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
+// Database information
 const (
 	dbUser      = "is"
 	dbPassword  = "is"
 	dbName      = "is"
 	dbHost      = "db-xml"
-	port		= "5432"
+	port        = "5432"
 	rabbitMQURL = "amqp://is:is@rabbitmq:5672/is"
 	queueName   = "queue"
 )
 
-func connectDB() *sql.DB {
+// Database connection
+func connectDatabase() *sql.DB {
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
 		dbUser, dbPassword, dbName, dbHost, port)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Error establishing connection with database:", err)
+		log.Fatal("Error connecting with Database:", err)
 	}
 
-	err = db.Ping()
-	if err != nil {
+	if err = db.Ping(); err != nil {
 		log.Fatal("Error pinging database:", err)
+	} else {
+		fmt.Println("Connection sucessfull with Database")
 	}
 
 	return db
 }
 
-func sendToBroker(fileName string, createdOn time.Time, updatedOn time.Time) {
-	conn, err := amqp.Dial(rabbitMQURL)
-	if err != nil {
-		log.Fatalf("Error connecting with RabbitMQ: %s", err)
-	}
-	defer conn.Close()
+// RabbitMQ queue message structure
+type Message struct {
+	FileName  string    `json:"file_name"`
+	CreatedOn time.Time `json:"created_on"`
+	UpdatedOn time.Time `json:"updated_on"`
+}
 
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("Erro opening channel: %s", err)
-	}
-	defer ch.Close()
-
+// RabbitMQ connection and queue message function
+func sendMessage(ch *amqp.Channel, fileName string, createdOn time.Time, updatedOn time.Time) {
 	q, err := ch.QueueDeclare(
 		queueName,
 		true,
@@ -70,16 +59,16 @@ func sendToBroker(fileName string, createdOn time.Time, updatedOn time.Time) {
 		nil,
 	)
 	if err != nil {
-		log.Fatalf("Erro declaring queue: %s", err)
+		log.Fatalf("Error declaring Queue: %s", err)
 	}
 
-	message := map[string]interface{}{
-		"file_name":   fileName,
-		"created_on":  createdOn,
-		"updated_on":  updatedOn,
+	msg := Message{
+		FileName:  fileName,
+		CreatedOn: createdOn,
+		UpdatedOn: updatedOn,
 	}
 
-	jsonData, err := json.Marshal(message)
+	jsonData, err := json.Marshal(msg)
 	if err != nil {
 		log.Printf("Error converting message to JSON: %s\n", err)
 		return
@@ -100,10 +89,11 @@ func sendToBroker(fileName string, createdOn time.Time, updatedOn time.Time) {
 		log.Fatalf("Error publishing message: %s", err)
 	}
 
-	fmt.Println("Mensage sent to RabbitMQ sucessfully!")
+	fmt.Println("Message sent to RabbitMQ successfully!")
 }
 
-func checkXMLFiles(db *sql.DB) {
+// Function to check for new XML files in the database
+func checkFiles(db *sql.DB, ch *amqp.Channel) {
 	fmt.Println("Verifying new XML...")
 
 	ticker := time.NewTicker(60 * time.Second)
@@ -112,27 +102,26 @@ func checkXMLFiles(db *sql.DB) {
 	for {
 		select {
 		case <-ticker.C:
-			query := ` SELECT file_name, created_on, updated_on FROM imported_documents WHERE (created_on > $1 OR updated_on > $1) AND deleted_on IS NULL `
+			query := `SELECT file_name, created_on, updated_on FROM imported_documents WHERE (created_on > $1 OR updated_on > $1) AND deleted_on IS NULL`
 
 			sixtySecondsAgo := time.Now().Add(-60 * time.Second)
 
 			rows, err := db.Query(query, sixtySecondsAgo)
 			if err != nil {
-				log.Fatal("Erro ao executar a consulta:", err)
+				log.Fatal("Error executing the Query:", err)
 			}
 
 			for rows.Next() {
 				var fileName string
 				var createdOn time.Time
 				var updatedOn time.Time
-				err := rows.Scan(&fileName, &createdOn, &updatedOn)
-				if err != nil {
-					log.Fatal("Error on select query:", err)
+				if err := rows.Scan(&fileName, &createdOn, &updatedOn); err != nil {
+					log.Fatal("Error on select Query:", err)
 				}
 
-				fmt.Printf("XML found: \nNome: %s\nCreated: %s\nUpdated: %s\n", fileName, createdOn, updatedOn)
+				fmt.Printf("XML found:\nName: %s\nCreated: %s\nUpdated: %s\n", fileName, createdOn, updatedOn)
 
-				sendToBroker(fileName, createdOn, updatedOn)
+				sendMessage(ch, fileName, createdOn, updatedOn)
 			}
 
 			if err := rows.Err(); err != nil {
@@ -145,8 +134,22 @@ func checkXMLFiles(db *sql.DB) {
 }
 
 func main() {
-	db := connectDB()
-	sayHelloWorld()
-	checkXMLFiles(db)
+	db := connectDatabase()
 	defer db.Close()
+
+	conn, err := amqp.Dial(rabbitMQURL)
+	if err != nil {
+		log.Fatalf("Error connecting with RabbitMQ: %s", err)
+	} else {
+		fmt.Println("Connection sucessfull with RabbitMQ")
+	}
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Error: %s", err)
+	}
+	defer ch.Close()
+
+	checkFiles(db, ch)
 }
