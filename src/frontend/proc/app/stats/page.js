@@ -1,4 +1,4 @@
-"use client";
+"use client"
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from "recharts";
 import useAPI from "../Hooks/useAPI";
 
 function ModelsStatsPage() {
@@ -28,28 +29,41 @@ function ModelsStatsPage() {
   useEffect(() => {
     setLoading(true);
     GET(`/modelsStats?sort=${sortingOption}`)
-        .then((result) => {
-          console.log("API Result:", result);
-          if (result) {
-              const apidata = result.map((vehicle) => {
-                  console.log("Vehicle Data:", vehicle);
-                  return {
-                      brand_name: vehicle.brand_name,
-                      country_name: vehicle.country_name,
-                      percentage: vehicle.percentage,
-                  };
-              });
-              setProcData(apidata);
-          } else {
-              setProcData([]);
-          }
-        }) .catch((error) => {
-            console.error("Error fetching data:", error);
-            setProcData([]);
-        }) .finally(() => {
-            setLoading(false);
-        });
+      .then((result) => {
+        if (result) {
+          const apidata = result.map((vehicle) => {
+            return {
+              brand_name: vehicle.brand_name,
+              country_name: vehicle.country_name,
+              percentage: vehicle.percentage,
+            };
+          });
+          setProcData(apidata);
+        } else {
+          setProcData([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+        setProcData([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [sortingOption]);
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ backgroundColor: "#fff", padding: "10px", border: "1px solid #ccc" }}>
+          <p>{`Brand: ${payload[0].payload.brand_name}`}</p>
+          <p>{`Country: ${payload[0].payload.country_name}`}</p>
+          <p>{`Percentage: ${payload[0].value}%`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Container>
@@ -59,17 +73,17 @@ function ModelsStatsPage() {
         </Typography>
 
         <Grid item xs={6}>
-            <Box>
-                <Select
-                value={sortingOption}
-                onChange={handleSortingChange}
-                variant="outlined"
-                style={{ minWidth: 80 }}
-                >
-                <MenuItem value="asc">ASC</MenuItem>
-                <MenuItem value="desc">DESC</MenuItem>
-                </Select>
-            </Box>
+          <Box>
+            <Select
+              value={sortingOption}
+              onChange={handleSortingChange}
+              variant="outlined"
+              style={{ minWidth: 80 }}
+            >
+              <MenuItem value="asc">ASC</MenuItem>
+              <MenuItem value="desc">DESC</MenuItem>
+            </Select>
+          </Box>
         </Grid>
 
         {procData ? (
@@ -78,15 +92,22 @@ function ModelsStatsPage() {
               {procData.length > 0
                 ? `Results from search: Brands Count` : `No data found`}
             </Typography>
-            {procData.map((item, index) => (
-              <Paper key={index} elevation={3} sx={{ padding: "1rem", margin: "1rem" }}>
-                <ListItem>
-                  <ListItemText 
-                    primary={`Brand: ${item.brand_name}, Country: ${item.country_name}, Percentage: ${item.percentage} `} 
-                  />
-                </ListItem>
-              </Paper>
-            ))}
+
+            <Box mt={4}>
+              <BarChart width={800} height={400} data={procData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="brand_name" />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />}/>
+                <Legend />
+                <Bar dataKey="percentage" fill="#8884d8">
+                  {procData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill="#8884d"/>
+                  ))}
+                </Bar>
+              </BarChart>
+              
+            </Box>
           </>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>

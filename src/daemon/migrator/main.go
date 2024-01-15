@@ -100,7 +100,7 @@ func consumemessage(ch *amqp.Channel) {
 		if err != nil {
 			log.Printf("Error decoding JSON message: %s\n", err)
 		} else {
-			fmt.Printf("Received message from RabbitMQ: %+v\n", message)
+			fmt.Printf("\nReceived queued filename: %+v\n", message.FileName)
 		}
 	}
 }

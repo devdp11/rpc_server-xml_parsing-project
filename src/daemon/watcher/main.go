@@ -110,11 +110,11 @@ func checkfiles(db *sql.DB) {
 		case <-ticker.C:
 			query := ` SELECT file_name, created_on, updated_on FROM imported_documents WHERE (created_on > $1 OR updated_on > $1) AND deleted_on IS NULL `
 
-			sixtySecondsAgo := time.Now().Add(-60 * time.Second)
+			timer := time.Now().Add(-60 * time.Second)
 
-			rows, err := db.Query(query, sixtySecondsAgo)
+			rows, err := db.Query(query, timer)
 			if err != nil {
-				log.Fatal("Erro ao executar a consulta:", err)
+				log.Fatal("Error executing search:", err)
 			}
 
 			for rows.Next() {
