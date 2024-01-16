@@ -17,7 +17,7 @@ export class CountriesService {
         });
     
         if (existingCountry) {
-            throw new ConflictException(`Model with name ${name} already exists.`);
+            throw new ConflictException(`Country with name ${name} already exists.`);
         }
 
         return this.prisma.country.create({
