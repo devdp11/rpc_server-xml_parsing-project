@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Param } from '@nestjs/common';
 import { CountriesService } from './country.service';
 
 @Controller('countries')
@@ -8,5 +8,12 @@ export class CountriesController {
     @Get()
     async findAll() {
         return this.countriesService.findAll();
+    }
+
+    @Post('add/:name')
+    async addCountryEndpoint(
+        @Param('name') name: string,
+    ) {
+        return this.countriesService.addCountryEndpoint(name);
     }
 }

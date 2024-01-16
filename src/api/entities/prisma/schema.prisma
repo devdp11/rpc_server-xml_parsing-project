@@ -13,7 +13,6 @@ datasource db {
 model Country {
   id         String   @id @default(uuid()) @map("id")
   name       String   @unique
-  geom       Unsupported("geometry")
   createdOn  DateTime @default(now()) @map("created_on")
   updatedOn  DateTime @updatedAt @map("updated_on")
 
