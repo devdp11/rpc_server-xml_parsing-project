@@ -155,6 +155,8 @@ services:
       USE_DEV_MODE: ${USE_DEV_MODE}
       PORT: ${API_PORT}
       DATABASE_URL: postgresql://is:is@db-rel:5432/is?schema=public
+    depends_on:
+      - db-rel
 
   # Container that runs the API for gis
   api-gis:
