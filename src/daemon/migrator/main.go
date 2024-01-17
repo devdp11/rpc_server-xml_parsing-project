@@ -38,6 +38,7 @@ type Data struct {
     Countries []Country  `xml:"Countries>Country"`
     Brands    []Brand    `xml:"Brands>Brand"`
     Styles    []Style    `xml:"Styles>Style"`
+	Vehicles  []Vehicle  `xml:"Vehicles>Car"`
 }
 
 type Country struct {
@@ -60,6 +61,13 @@ type Model struct {
 type Style struct {
 	ID   string `xml:"id,attr"`
     Name string `xml:"name,attr"`
+}
+
+type Vehicle struct {
+	ID          string `xml:"id,attr"`
+	BrandRef    string `xml:"brand_ref,attr"`
+	ModelRef    string `xml:"model_ref,attr"`
+	Year        string `xml:"year,attr"`
 }
 
 func connectdatabase() *sql.DB {
@@ -169,6 +177,8 @@ func migratedata(db *sql.DB, message Message) {
 		countryMap[country.ID] = country.Name
 	}
 
+	var brandMap = make(map[string]string)
+	var modelMap = make(map[string]string)
 	var brands Data
 	if err := parseXMLData(xmlData, &brands, "Brands"); err != nil {
 		return
@@ -193,6 +203,7 @@ func migratedata(db *sql.DB, message Message) {
 			log.Printf("Error inserting brand %s: %s", brand.Name, err)
 		}
 	
+		brandMap[brand.ID] = brand.Name
 		for _, model := range brand.Models {
 			log.Printf("Processing model: %+v, BrandName: %s", model, brand.Name)
 	
@@ -200,9 +211,11 @@ func migratedata(db *sql.DB, message Message) {
 			if err != nil {
 				log.Printf("Error inserting model %s: %s", model.Name, err)
 			}
+			modelMap[model.ID] = model.Name
 		}
 	}
-
+	
+	var styleMap = make(map[string]string)
 	var styles Data
 	if err := parseXMLData(xmlData, &styles, "Styles"); err != nil {
 		return
@@ -220,6 +233,44 @@ func migratedata(db *sql.DB, message Message) {
 		if err != nil {
 			log.Printf("Error inserting style %s: %s", style.Name, err)
 		}
+		styleMap[style.ID] = style.Name
+	}
+	
+	var vehicles Data
+	if err := parseXMLData(xmlData, &vehicles, "Vehicles"); err != nil {
+		return
+	}
+
+	if len(vehicles.Vehicles) == 0 {
+		log.Printf("No vehicles found in the XML data for filename: %s", message.FileName)
+		return
+	}
+
+	for _, vehicle := range vehicles.Vehicles {
+		brandName, exists := brandMap[vehicle.BrandRef]
+		if !exists {
+			log.Printf("Brand with ID %s not found for vehicle %s", vehicle.BrandRef, vehicle.ID)
+			continue
+		}
+	
+		modelName, exists := modelMap[vehicle.ModelRef]
+		if !exists {
+			log.Printf("Model with ID %s not found for vehicle %s", vehicle.ModelRef, vehicle.ID)
+			continue
+		}
+	
+		/* styleName, exists := styleMap[vehicle.StyleRef]
+		if !exists {
+			log.Printf("Style with ID %s not found for vehicle %s", vehicle.StyleRef, vehicle.ID)
+			continue
+		} */
+	
+		log.Printf("Processing vehicle: %+v, BrandName: %s, ModelName: %s", vehicle, brandName, modelName)
+	
+		/* err := insertVehicle(brandName, modelName, styleName, vehicle)
+		if err != nil {
+			log.Printf("Error inserting vehicle %s: %s", vehicle.ID, err)
+		} */
 	}
 }
 
