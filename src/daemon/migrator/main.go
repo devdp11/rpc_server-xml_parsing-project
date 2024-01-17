@@ -23,6 +23,8 @@ const (
 	queueName      = "queue"
 	apicountries = "http://api-entities:8080/countries/add/"
 	apibrands = "http://api-entities:8080/brands/add/"
+	apimodels = "http://api-entities:8080/models/add/"
+	apistyles = "http://api-entities:8080/styles/add/"
 )
 
 type Message struct {
@@ -33,8 +35,9 @@ type Message struct {
 
 type Data struct {
     XMLName   xml.Name   `xml:"Data"`
-    Countries []Country `xml:"Countries>Country"`
-    Brands []Brand `xml:"Brands>Brand"`
+    Countries []Country  `xml:"Countries>Country"`
+    Brands    []Brand    `xml:"Brands>Brand"`
+    Styles    []Style    `xml:"Styles>Style"`
 }
 
 type Country struct {
@@ -43,9 +46,20 @@ type Country struct {
 }
 
 type Brand struct {
+    ID         string   `xml:"id,attr"`
+    Name       string   `xml:"name,attr"`
+    CountryRef string   `xml:"country_ref,attr"`
+    Models     []Model  `xml:"Models>Model"`
+}
+
+type Model struct {
+    ID       string `xml:"id,attr"`
+    Name     string `xml:"name,attr"`
+}
+
+type Style struct {
 	ID   string `xml:"id,attr"`
     Name string `xml:"name,attr"`
-    CountryRef string `xml:"country_ref,attr"`
 }
 
 func connectdatabase() *sql.DB {
@@ -178,6 +192,34 @@ func migratedata(db *sql.DB, message Message) {
 		if err != nil {
 			log.Printf("Error inserting brand %s: %s", brand.Name, err)
 		}
+	
+		for _, model := range brand.Models {
+			log.Printf("Processing model: %+v, BrandName: %s", model, brand.Name)
+	
+			err := insertModel(brand.Name, model.Name)
+			if err != nil {
+				log.Printf("Error inserting model %s: %s", model.Name, err)
+			}
+		}
+	}
+
+	var styles Data
+	if err := parseXMLData(xmlData, &styles, "Styles"); err != nil {
+		return
+	}
+
+	if len(styles.Styles) == 0 {
+        log.Printf("No styles found in the XML data for filename: %s", message.FileName)
+        return
+    }
+
+	for _, style := range styles.Styles {
+		log.Printf("Processing style: %+v", style)
+
+		err := insertstyle(style.Name)
+		if err != nil {
+			log.Printf("Error inserting style %s: %s", style.Name, err)
+		}
 	}
 }
 
@@ -246,5 +288,54 @@ func insertbrand(brandName, countryName string) error {
 	}
 
 	fmt.Printf("Brand sent to API. Name: %s, Country: %s\n", brandName, countryName)
+	return nil
+}
+
+func insertModel(brandName, modelName string) error {
+	client := resty.New()
+
+	url := fmt.Sprintf("%s%s/%s", apimodels, brandName, modelName)
+
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]string{
+			"brand_name":  brandName,
+			"model_name": modelName,
+		}).
+		Post(url)
+
+	if err != nil {
+		return fmt.Errorf("Error sending model to API: %s", err)
+	}
+
+	if resp.StatusCode() != 201 {
+		return fmt.Errorf("Error sending model to API. Status code: %d", resp.StatusCode())
+	}
+
+	fmt.Printf("Model sent to API. Name: %s, Brand: %s\n", modelName, brandName)
+	return nil
+}
+
+func insertstyle(style string) error {
+	client := resty.New()
+
+	url := fmt.Sprintf("%s%s", apistyles, style)
+
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]string{
+			"style_name": style,
+		}).
+		Post(url)
+
+	if err != nil {
+		return fmt.Errorf("Error sending style to API: %s", err)
+	}
+
+	if resp.StatusCode() != 201 {
+		return fmt.Errorf("Error sending style to API. Status code: %d", resp.StatusCode())
+	}
+
+	fmt.Printf("Style sent to API. Name: %s\n", style)
 	return nil
 }
