@@ -22,7 +22,7 @@ const (
 	rabbitMQURL    = "amqp://is:is@rabbitmq:5672/is"
 	queueName      = "queue"
 	apicountries = "http://api-entities:8080/countries/add/"
-	apibrands = "http://api-entities:8080/countries/add/"
+	apibrands = "http://api-entities:8080/brands/add/"
 )
 
 type Message struct {
@@ -34,10 +34,18 @@ type Message struct {
 type Data struct {
     XMLName   xml.Name   `xml:"Data"`
     Countries []Country `xml:"Countries>Country"`
+    Brands []Brand `xml:"Brands>Brand"`
 }
 
 type Country struct {
+	ID   string `xml:"id,attr"`
     Name string `xml:"name,attr"`
+}
+
+type Brand struct {
+	ID   string `xml:"id,attr"`
+    Name string `xml:"name,attr"`
+    CountryRef string `xml:"country_ref,attr"`
 }
 
 func connectdatabase() *sql.DB {
@@ -55,10 +63,6 @@ func connectdatabase() *sql.DB {
 	if err != nil {
 		log.Fatal("Error pinging XML Database:", err)
 	}
-
-	conn, ch := connectrabbitmq()
-	defer conn.Close()
-	defer ch.Close()
 
 	return db
 }
@@ -130,24 +134,59 @@ func migratedata(db *sql.DB, message Message) {
     }
 
     var countries Data
-    if err := xml.Unmarshal([]byte(xmlData), &countries); err != nil {
-        log.Printf("Error parsing XML data: %s", err)
-        return
-    }
+	if err := parseXMLData(xmlData, &countries, "Countries"); err != nil {
+		return
+	}
 
-    if len(countries.Countries) == 0 {
+	if len(countries.Countries) == 0 {
         log.Printf("No countries found in the XML data for filename: %s", message.FileName)
         return
     }
 
-    for _, country := range countries.Countries {
-        log.Printf("Processing country: %+v", country)
+	countryMap := make(map[string]string)
+	for _, country := range countries.Countries {
+		log.Printf("Processing country: %+v", country)
 
-        err := insertcountry(country.Name)
-        if err != nil {
-            log.Printf("Error inserting country %s: %s", country.Name, err)
-        }
+		err := insertcountry(country.Name)
+		if err != nil {
+			log.Printf("Error inserting country %s: %s", country.Name, err)
+		}
+
+		countryMap[country.ID] = country.Name
+	}
+
+	var brands Data
+	if err := parseXMLData(xmlData, &brands, "Brands"); err != nil {
+		return
+	}
+
+	if len(brands.Brands) == 0 {
+        log.Printf("No brands found in the XML data for filename: %s", message.FileName)
+        return
     }
+
+	for _, brand := range brands.Brands {
+		countryName, exists := countryMap[brand.CountryRef]
+		if !exists {
+			log.Printf("Country with ID %s not found for brand %s", brand.CountryRef, brand.Name)
+			continue
+		}
+	
+		log.Printf("Processing brand: %+v, CountryName: %s", brand, countryName)
+	
+		err := insertbrand(brand.Name, countryName)
+		if err != nil {
+			log.Printf("Error inserting brand %s: %s", brand.Name, err)
+		}
+	}
+}
+
+func parseXMLData(xmlData string, target interface{}, sectionName string) error {
+    if err := xml.Unmarshal([]byte(xmlData), target); err != nil {
+        log.Printf("Error parsing %s data: %s", sectionName, err)
+        return err
+    }
+    return nil
 }
 
 func main() {
@@ -182,5 +221,30 @@ func insertcountry(country string) error {
 	}
 
 	fmt.Printf("Country sent to API. Name: %s\n", country)
+	return nil
+}
+
+func insertbrand(brandName, countryName string) error {
+	client := resty.New()
+
+	url := fmt.Sprintf("%s%s/%s", apibrands, brandName, countryName)
+
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]string{
+			"brand_name":  brandName,
+			"country_name": countryName,
+		}).
+		Post(url)
+
+	if err != nil {
+		return fmt.Errorf("Error sending brand to API: %s", err)
+	}
+
+	if resp.StatusCode() != 201 {
+		return fmt.Errorf("Error sending brand to API. Status code: %d", resp.StatusCode())
+	}
+
+	fmt.Printf("Brand sent to API. Name: %s, Country: %s\n", brandName, countryName)
 	return nil
 }
