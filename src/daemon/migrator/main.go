@@ -21,13 +21,23 @@ const (
 	port           = "5432"
 	rabbitMQURL    = "amqp://is:is@rabbitmq:5672/is"
 	queueName      = "queue"
-	apiCountriesCreate = "http://api-entities:8080/countries/add"
+	apicountries = "http://api-entities:8080/countries/add/"
+	apibrands = "http://api-entities:8080/countries/add/"
 )
 
 type Message struct {
 	FileName  string    `json:"file_name"`
 	CreatedOn time.Time `json:"created_on"`
 	UpdatedOn time.Time `json:"updated_on"`
+}
+
+type Data struct {
+    XMLName   xml.Name   `xml:"Data"`
+    Countries []Country `xml:"Countries>Country"`
+}
+
+type Country struct {
+    Name string `xml:"name,attr"`
 }
 
 func connectdatabase() *sql.DB {
@@ -102,10 +112,42 @@ func consumemessage(ch *amqp.Channel, db *sql.DB) {
 			log.Printf("Error decoding JSON message: %s\n", err)
 		} else {
 			fmt.Printf("\nReceived queued filename: %+v\n", message.FileName)
-			// Execute a lógica de migração aqui utilizando a API api-entities e a conexão do banco de dados db
-			migrateData(db, message)
+			migratedata(db, message)
 		}
 	}
+}
+
+func migratedata(db *sql.DB, message Message) {
+    query := "SELECT xml FROM imported_documents WHERE file_name = $1"
+    var xmlData string
+    err := db.QueryRow(query, message.FileName).Scan(&xmlData)
+    if err == sql.ErrNoRows {
+        log.Printf("No record found for filename: %s", message.FileName)
+        return
+    } else if err != nil {
+        log.Printf("Error querying database: %s", err)
+        return
+    }
+
+    var countries Data
+    if err := xml.Unmarshal([]byte(xmlData), &countries); err != nil {
+        log.Printf("Error parsing XML data: %s", err)
+        return
+    }
+
+    if len(countries.Countries) == 0 {
+        log.Printf("No countries found in the XML data for filename: %s", message.FileName)
+        return
+    }
+
+    for _, country := range countries.Countries {
+        log.Printf("Processing country: %+v", country)
+
+        err := insertcountry(country.Name)
+        if err != nil {
+            log.Printf("Error inserting country %s: %s", country.Name, err)
+        }
+    }
 }
 
 func main() {
@@ -119,73 +161,17 @@ func main() {
 	consumemessage(ch, db)
 }
 
-func migrateData(db *sql.DB, message Message) {
-    // Query the database to retrieve XML data based on the filename
-    query := "SELECT xml FROM imported_documents WHERE file_name = $1"
-    var xmlData string
-    err := db.QueryRow(query, message.FileName).Scan(&xmlData)
-    if err == sql.ErrNoRows {
-        log.Printf("No record found for filename: %s", message.FileName)
-        return
-    } else if err != nil {
-        log.Printf("Error querying database: %s", err)
-        return
-    }
-
-    // Process the retrieved XML data
-    //log.Printf("Retrieved XML data for filename %s: %s", message.FileName, xmlData)
-
-    // Parse the XML data
-    var countries Data
-    if err := xml.Unmarshal([]byte(xmlData), &countries); err != nil {
-        log.Printf("Error parsing XML data: %s", err)
-        return
-    }
-
-    // Check if there are countries in the parsed data
-    if len(countries.Countries) == 0 {
-        log.Printf("No countries found in the XML data for filename: %s", message.FileName)
-        return
-    }
-
-    // Iterate over countries and insert each one using the API
-    for _, country := range countries.Countries {
-        log.Printf("Processing country: %+v", country)
-
-        // Fazer chamada à API para inserir país
-        err := insertCountryUsingAPI(country.Name)
-        if err != nil {
-            log.Printf("Error inserting country %s: %s", country.Name, err)
-        } else {
-            log.Printf("Successfully inserted country: %s", country.Name)
-        }
-    }
-}
-
-
-
-// Define a struct to match the XML structure
-type Data struct {
-    XMLName   xml.Name   `xml:"Data"`
-    Countries []Country `xml:"Countries>Country"`
-}
-
-type Country struct {
-    ID   string `xml:"id,attr"`
-    Name string `xml:"name,attr"`
-}
-
-
-
-func insertCountryUsingAPI(country string) error {
+func insertcountry(country string) error {
 	client := resty.New()
+
+	url := fmt.Sprintf("%s%s", apicountries, country)
 
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]string{
 			"country_name": country,
 		}).
-		Post(apiCountriesCreate)
+		Post(url)
 
 	if err != nil {
 		return fmt.Errorf("Error sending country to API: %s", err)
