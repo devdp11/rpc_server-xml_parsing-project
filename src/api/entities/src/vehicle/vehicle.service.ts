@@ -15,6 +15,19 @@ export class VehiclesService {
         });
     }
 
+    async findVehiclesByBrandEndpoint(brandName: string): Promise<any | null> {
+        return this.prisma.vehicle.findMany({
+            include: {
+                brand: true,
+            },
+            where: {
+                brand: {
+                    name: brandName,
+                },
+            },
+        });
+    }
+
     async addVehicleEndpoint(data: any): Promise<any> {
         try {
             const { brandName, modelName, styleName, year, horsepower, cylinders, doors, highway_mpg, city_mpg, popularity, msrp } = data;
