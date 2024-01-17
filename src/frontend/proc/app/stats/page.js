@@ -102,7 +102,7 @@ function ModelsStatsPage() {
                 <Legend />
                 <Bar dataKey="percentage" fill="#8884d8">
                   {procData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill="#8884d"/>
+                    <Cell key={`cell-${index}`} fill="#8884d8"/>
                   ))}
                 </Bar>
               </BarChart>

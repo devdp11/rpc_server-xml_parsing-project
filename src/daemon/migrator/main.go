@@ -25,6 +25,7 @@ const (
 	apibrands = "http://api-entities:8080/brands/add/"
 	apimodels = "http://api-entities:8080/models/add/"
 	apistyles = "http://api-entities:8080/styles/add/"
+	apivehicles = "http://api-entities:8080/vehicles/"
 )
 
 type Message struct {
@@ -64,10 +65,51 @@ type Style struct {
 }
 
 type Vehicle struct {
-	ID          string `xml:"id,attr"`
-	BrandRef    string `xml:"brand_ref,attr"`
-	ModelRef    string `xml:"model_ref,attr"`
-	Year        string `xml:"year,attr"`
+	ID          	   string     		`xml:"id,attr"`
+	BrandRef    	   string     		`xml:"brand_ref,attr"`
+	ModelRef    	   string     		`xml:"model_ref,attr"`
+	Year        	   int     		`xml:"year,attr"`
+	EngineHp    	   EngineHp   		`xml:"Engine_HP"`
+	EngineCylinders    EngineCylinder   `xml:"Engine_Cylinders"`
+
+	NumberDoors    NumberDoor   `xml:"Number_Of_Doors"`
+	StyleRef       StyleRef   	`xml:"Vehicle_Style"`
+	HighwayMPG     HighwayMPG   `xml:"Highway_mpg"`
+	CityMPG    	   CityMPG   	`xml:"City_mpg"`
+	Popularity     Popularity   `xml:"Popularity"`
+	Msrp     	   Msrp   		`xml:"Msrp"`	
+}
+
+type EngineHp struct {
+	Value int `xml:"value,attr"`
+}
+
+type EngineCylinder struct {
+	Value int `xml:"value,attr"`
+}
+
+type NumberDoor struct {
+	Value int `xml:"value,attr"`
+}
+
+type StyleRef struct {
+	Value string `xml:"ref,attr"`
+}
+
+type HighwayMPG struct {
+	Value int `xml:"value,attr"`
+}
+
+type CityMPG struct {
+	Value int `xml:"value,attr"`
+}
+
+type Popularity struct {
+	Value int `xml:"value,attr"`
+}
+
+type Msrp struct {
+	Value int `xml:"value,attr"`
 }
 
 func connectdatabase() *sql.DB {
@@ -259,18 +301,18 @@ func migratedata(db *sql.DB, message Message) {
 			continue
 		}
 	
-		/* styleName, exists := styleMap[vehicle.StyleRef]
+		styleName, exists := styleMap[vehicle.StyleRef.Value]
 		if !exists {
-			log.Printf("Style with ID %s not found for vehicle %s", vehicle.StyleRef, vehicle.ID)
+			log.Printf("Style with ID %s not found for vehicle %s", vehicle.StyleRef.Value, vehicle.ID)
 			continue
-		} */
+		}
 	
-		log.Printf("Processing vehicle: %+v, BrandName: %s, ModelName: %s", vehicle, brandName, modelName)
+		log.Printf("Processing vehicle: %+v, BrandName: %s, ModelName: %s, StyleName: %s", vehicle, brandName, modelName, styleName)
 	
-		/* err := insertVehicle(brandName, modelName, styleName, vehicle)
+		err := insertvehicle(brandName, modelName, styleName, vehicle)
 		if err != nil {
 			log.Printf("Error inserting vehicle %s: %s", vehicle.ID, err)
-		} */
+		}
 	}
 }
 
@@ -388,5 +430,46 @@ func insertstyle(style string) error {
 	}
 
 	fmt.Printf("Style sent to API. Name: %s\n", style)
+	return nil
+}
+
+func insertvehicle(brandName, modelName, styleName string, vehicle Vehicle) error {
+	client := resty.New()
+
+	url := apivehicles
+
+	requestBody := map[string]interface{}{
+		"brandName":   brandName,
+		"modelName":   modelName,
+		"styleName":   styleName,
+		"year":        vehicle.Year,
+		"horsepower":  vehicle.EngineHp.Value,
+		"cylinders":   vehicle.EngineCylinders.Value,
+		"doors":       vehicle.NumberDoors.Value,
+		"highway_mpg": vehicle.HighwayMPG.Value,
+		"city_mpg":    vehicle.CityMPG.Value,
+		"popularity":  vehicle.Popularity.Value,
+		"msrp":        vehicle.Msrp.Value,
+	}
+
+	requestBodyJSON, err := json.MarshalIndent(requestBody, "", "  ")
+	if err != nil {
+		return fmt.Errorf("Error marshaling request body: %s", err)
+	}
+
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(requestBody).
+		Post(url)
+
+	if err != nil {
+		return fmt.Errorf("Error sending vehicle to API: %s", err)
+	}
+
+	if resp.StatusCode() != 201 {
+		return fmt.Errorf("Error sending vehicle to API. Status code: %d", resp.StatusCode())
+	}
+
+	fmt.Printf("Vehicle sent to API. ID: %s, Brand: %s, Model: %s, Style: %s\n", vehicle.ID, brandName, modelName, styleName)
 	return nil
 }
