@@ -33,28 +33,41 @@ func connectdatabase() *sql.DB {
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Error connecting with Database:", err)
+		log.Fatal("Error connecting with XML Database:", err)
+	} else {
+		fmt.Println("Connection successful with XML Database")
 	}
 
 	err = db.Ping()
 	if err != nil {
-		log.Fatal("Error pinging Database:", err)
+		log.Fatal("Error pinging XML Database:", err)
 	}
 
 	return db
 }
 
+func connectrabbitmq() (*amqp.Connection, *amqp.Channel, error) {
+    conn, err := amqp.Dial(rabbitMQURL)
+    if err != nil {
+        return nil, nil, fmt.Errorf("Error connecting with RabbitMQ: %s", err)
+    }
+
+    fmt.Println("Connection successful with RabbitMQ")
+
+    ch, err := conn.Channel()
+    if err != nil {
+        return nil, nil, fmt.Errorf("Error opening channel: %s", err)
+    }
+
+    return conn, ch, nil
+}
+
 func sendmessage(fileName string, createdOn time.Time, updatedOn time.Time) {
-	conn, err := amqp.Dial(rabbitMQURL)
+	conn, ch, err := connectrabbitmq()
 	if err != nil {
 		log.Fatalf("Error connecting with RabbitMQ: %s", err)
 	}
 	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("Erro opening channel: %s", err)
-	}
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
@@ -66,13 +79,13 @@ func sendmessage(fileName string, createdOn time.Time, updatedOn time.Time) {
 		nil,
 	)
 	if err != nil {
-		log.Fatalf("Erro declaring Queue: %s", err)
+		log.Fatalf("Error declaring Queue: %s", err)
 	}
 
 	message := map[string]interface{}{
-		"file_name":   fileName,
-		"created_on":  createdOn,
-		"updated_on":  updatedOn,
+		"file_name":  fileName,
+		"created_on": createdOn,
+		"updated_on": updatedOn,
 	}
 
 	jsonData, err := json.Marshal(message)
@@ -96,7 +109,7 @@ func sendmessage(fileName string, createdOn time.Time, updatedOn time.Time) {
 		log.Fatalf("Error publishing message: %s", err)
 	}
 
-	fmt.Println("Mensage sent to RabbitMQ sucessfully!")
+	fmt.Println("Message sent to RabbitMQ successfully!")
 }
 
 func checkfiles(db *sql.DB) {
