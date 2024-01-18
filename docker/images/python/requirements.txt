@@ -7,3 +7,4 @@ flask==3.0.0
 flask-cors
 flask-magql==1.0.0
 pika==1.2.0
+requests==2.26.0

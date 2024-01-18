@@ -17,6 +17,7 @@ import json
 import pika
 import xml.etree.ElementTree as ET
 import psycopg2
+import requests
 
 # Configurações do RabbitMQ
 rabbitmq_user = "is"
@@ -29,7 +30,7 @@ queue_name = "queue"
 rabbitmq_url = f"amqp://is:is@rabbitmq:5672/is"
 
 # Coordenadas geográficas específicas para alguns países
-country_coordinates = {
+'''country_coordinates = {
     "Germany": {"latitude": 51.1657, "longitude": 10.4515},
     "Italy": {"latitude": 41.8719, "longitude": 12.5674},
     "USA": {"latitude": 37.0902, "longitude": -95.7129},
@@ -63,7 +64,7 @@ country_coordinates = {
     "Chile": {"latitude": -35.6751, "longitude": -71.5430},
     "Vietnam": {"latitude": 14.0583, "longitude": 108.2772},
     "Thailand": {"latitude": 15.8700, "longitude": 100.9925},
-}
+}'''
 
 # Configurações do PostgreSQL
 db_user = "is"
@@ -119,16 +120,46 @@ def parse_and_assign_geolocation(file_name, db_connection):
 
         for country in countries:
             country_name = country.get("name")
+            
+            # Use apenas o nome do país para a localização
+            location_name = country_name
+            
+            # Atualiza as coordenadas usando a API Nominatim
+            latitude, longitude = update_coordinates_with_nominatim(location_name)
 
-            # Atribuir coordenadas geográficas específicas para alguns países
-            coordinates = country_coordinates.get(country_name, {"latitude": "N/A", "longitude": "N/A"})
+            print(f"País: {country_name}, Latitude: {latitude}, Longitude: {longitude}")
 
-            print(f"País: {country_name}, Latitude: {coordinates['latitude']}, Longitude: {coordinates['longitude']}")
+
 
     except ET.ParseError as e:
         print(f"Erro ao analisar o arquivo XML '{file_name}': {e}")
     except psycopg2.Error as e:
         print(f"Erro ao executar a query SQL: {e}")
+
+def update_coordinates_with_nominatim(location_name):
+    nominatim_url = "https://nominatim.openstreetmap.org/search"
+    params = {
+        "q": location_name,
+        "format": "json",
+    }
+
+    try:
+        response = requests.get(nominatim_url, params=params)
+        response.raise_for_status()  # Verifica se houve erro na requisição
+
+        data = response.json()
+        if data:
+            # Assume a primeira correspondência como a mais relevante
+            latitude = data[0]["lat"]
+            longitude = data[0]["lon"]
+            return latitude, longitude
+        else:
+            print(f"Não foi possível encontrar coordenadas para: {location_name}")
+            return None, None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao fazer requisição para a API Nominatim: {e}")
+        return None, None
 
 if __name__ == "__main__":
     rabbitmq_connection, rabbitmq_channel = connect_rabbitmq()
