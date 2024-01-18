@@ -1,4 +1,4 @@
-"use client";
+"use client"
 import React, { useState, useEffect } from "react";
 import {
   CircularProgress,
@@ -10,15 +10,17 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
 } from "@mui/material";
 import useApi from "../Hooks/useAPI";
 
-export default function BrandsPage() {
+export default function ModelsPage() {
   const api = useApi();
   const [models, setModels] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const [filteredModels, setFilteredModels] = useState([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [searchBrand, setSearchBrand] = useState("");
 
   const fetchModels = async () => {
     try {
@@ -33,24 +35,21 @@ export default function BrandsPage() {
     fetchModels();
   }, []);
 
-  const fetchBrands = async () => {
-    try {
-      const response = await api.GET(`/brands`);
-      setBrands(response);
-    } catch (error) {
-      console.error("Error fetching brands:", error);
-    }
-  };
-
   useEffect(() => {
-    fetchBrands();
-  }, []);
+    const filtered = searchBrand
+      ? models.filter((model) =>
+          model.brandName.toLowerCase().includes(searchBrand.toLowerCase())
+        )
+      : models;
+
+    setFilteredModels(filtered);
+  }, [models, searchBrand]);
 
   const renderModelsRows = () => {
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
 
-    return models.slice(startIndex, endIndex).map((model) => (
+    return filteredModels.slice(startIndex, endIndex).map((model) => (
       <TableRow key={model.id}>
         <TableCell component="td" scope="row">
           {model.name}
@@ -71,9 +70,24 @@ export default function BrandsPage() {
     setPage(1);
   };
 
+  const handleSearchBrandChange = (event) => {
+    setSearchBrand(event.target.value);
+    setPage(1);
+  };
+
   return (
     <main>
       <h1>Model's Page</h1>
+
+
+      <TextField
+        label="Search by Brand"
+        variant="outlined"
+        value={searchBrand}
+        onChange={handleSearchBrandChange}
+        style={{ marginBottom: 16 }}
+      />
+
       <TableContainer component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
           <TableHead>
@@ -87,7 +101,7 @@ export default function BrandsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {models.length > 0 ? (
+            {filteredModels.length > 0 ? (
               renderModelsRows()
             ) : (
               <TableRow>
@@ -101,27 +115,27 @@ export default function BrandsPage() {
       </TableContainer>
 
       <div style={{ display: 'flex', marginTop: 8 }}>
-            <Pagination
-            style={{ marginRight: 16 }}
-            variant="outlined"
-            shape="rounded"
-            color="primary"
-            onChange={handlePageChange}
-            page={page}
-            count={Math.ceil(models.length / itemsPerPage)}
-            />
+        <Pagination
+          style={{ marginRight: 16 }}
+          variant="outlined"
+          shape="rounded"
+          color="primary"
+          onChange={handlePageChange}
+          page={page}
+          count={Math.ceil(filteredModels.length / itemsPerPage)}
+        />
 
-            <div style={{ textAlign: 'center' }}>
-            <label>
-                Items per page:{' '}
-                <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                </select>
-            </label>
-            </div>
+        <div style={{ textAlign: 'center' }}>
+          <label>
+            Items per page:{' '}
+            <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+          </label>
         </div>
+      </div>
     </main>
   );
 }

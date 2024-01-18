@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -18,6 +18,16 @@ export class StylesService {
     }
 
     async addStyleEndpoint(styleName: string): Promise<any> {
+        const existingStyle = await this.prisma.style.findUnique({
+            where: {
+                name: styleName,
+            },
+        });
+    
+        if (existingStyle) {
+            throw new ConflictException(`Style with name ${styleName} already exists.`);
+        }
+
         return this.prisma.style.create({
             data: {
                 name: styleName,

@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
 } from "@mui/material";
 import useApi from "../Hooks/useAPI";
 
@@ -18,6 +19,8 @@ export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [searchBrand, setSearchBrand] = useState("");
+  const [filteredVehicles, setFilteredVehicles] = useState([]);
 
   const fetchVehicles = async () => {
     try {
@@ -32,11 +35,21 @@ export default function VehiclesPage() {
     fetchVehicles();
   }, []);
 
+  useEffect(() => {
+    const filtered = searchBrand
+      ? vehicles.filter((vehicle) =>
+          vehicle.brandName.toLowerCase().includes(searchBrand.toLowerCase())
+        )
+      : vehicles;
+
+    setFilteredVehicles(filtered);
+  }, [vehicles, searchBrand]);
+
   const renderVehiclesRows = () => {
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
 
-    return vehicles.slice(startIndex, endIndex).map((vehicle) => (
+    return filteredVehicles.slice(startIndex, endIndex).map((vehicle) => (
       <TableRow key={vehicle.id}>
         <TableCell component="td" scope="row">
           {vehicle.brandName}
@@ -84,12 +97,26 @@ export default function VehiclesPage() {
     setPage(1);
   };
 
+  const handleSearchBrandChange = (event) => {
+    setSearchBrand(event.target.value);
+    setPage(1);
+  };
+
   return (
     <main>
       <h1>Vehicle's Page</h1>
+
+      <TextField
+        label="Search by Brand"
+        variant="outlined"
+        value={searchBrand}
+        onChange={handleSearchBrandChange}
+        style={{ marginBottom: 16 }}
+      />
+
       <TableContainer component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
-          <TableHead>
+        <TableHead>
             <TableRow sx={{ backgroundColor: "lightgray" }}>
               <TableCell component="th" width={"1px"} align="center">
                 Brand
@@ -127,7 +154,7 @@ export default function VehiclesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {vehicles.length > 0 ? (
+            {filteredVehicles.length > 0 ? (
               renderVehiclesRows()
             ) : (
               <TableRow>
@@ -141,27 +168,27 @@ export default function VehiclesPage() {
       </TableContainer>
 
       <div style={{ display: 'flex', marginTop: 8 }}>
-            <Pagination
-            style={{ marginRight: 16 }}
-            variant="outlined"
-            shape="rounded"
-            color="primary"
-            onChange={handlePageChange}
-            page={page}
-            count={Math.ceil(vehicles.length / itemsPerPage)}
-            />
+        <Pagination
+          style={{ marginRight: 16 }}
+          variant="outlined"
+          shape="rounded"
+          color="primary"
+          onChange={handlePageChange}
+          page={page}
+          count={Math.ceil(filteredVehicles.length / itemsPerPage)}
+        />
 
-            <div style={{ textAlign: 'center' }}>
-            <label>
-                Items per page:{' '}
-                <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                </select>
-            </label>
-            </div>
+        <div style={{ textAlign: 'center' }}>
+          <label>
+            Items per page:{' '}
+            <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+          </label>
         </div>
+      </div>
     </main>
   );
 }
