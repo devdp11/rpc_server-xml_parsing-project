@@ -6,11 +6,11 @@ import ContactsIcon from '@mui/icons-material/Contacts';
 import React from "react";
 import {Marker, Popup} from 'react-leaflet';
 import {icon as leafletIcon, point} from "leaflet";
+import { CarRental } from "@mui/icons-material";
 
 const LIST_PROPERTIES = [
     {"key": "country", label: "Country", Icon: FlagIcon},
-    {"key": "number", label: "Shirt Number", Icon: ContactsIcon},
-    {"key": "position", label: "Position", Icon: PictureInPictureAltIcon}
+    {"key": "name", label: "Brand Name", Icon: CarRental},
 ];
 
 export function ObjectMarker({geoJSON}) {
