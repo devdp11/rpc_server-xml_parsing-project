@@ -19,59 +19,55 @@ import xml.etree.ElementTree as ET
 import psycopg2
 import requests
 
-# Configurações do RabbitMQ
 rabbitmq_user = "is"
 rabbitmq_password = "is"
 rabbitmq_host = "rabbitmq"
 rabbitmq_port = 5672
 queue_name = "queue"
 
-# URL de conexão com o RabbitMQ
 rabbitmq_url = f"amqp://is:is@rabbitmq:5672/is"
 
-# Configurações do PostgreSQL
 db_user = "is"
 db_password = "is"
 db_name = "is"
 db_host = "db-xml"
 db_port = "5432"
 
-def connect_rabbitmq():
+def connectrabbitmq():
     parameters = pika.URLParameters(rabbitmq_url)
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()
-    print("Conexão bem-sucedida com o RabbitMQ")
+    print("Conection sucessfull with rabbitMQ.")
     return connection, channel
 
-def connect_postgresql():
+def connectdatabase():
     conn_str = f"host={db_host} port={db_port} user={db_user} password={db_password} dbname={db_name} sslmode=disable"
     try:
         connection = psycopg2.connect(conn_str)
-        print("Conexão bem-sucedida com o PostgreSQL")
+        print("Conection sucessfull with database.")
         return connection
     except psycopg2.Error as e:
-        print(f"Erro ao conectar ao PostgreSQL: {e}")
+        print(f"Error conecting to database. {e}")
         raise
 
 def consume_message(ch, db_connection):
     def callback(ch, method, properties, body):
         message = json.loads(body.decode('utf-8'))
-        print("\nRecebido o nome do arquivo da fila:", message["file_name"])
+        print("\nReceive sucessfully filename: :", message["file_name"])
         parse_and_assign_geolocation(message["file_name"], db_connection)
 
     ch.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
-    print(f"Aguardando mensagens da fila '{queue_name}'. Para sair, pressione CTRL+C")
+    print(f"Waiting for messages on '{queue_name}'.")
     ch.start_consuming()
 
 def parse_and_assign_geolocation(file_name, db_connection):
     try:
-        # Executar a query SQL para obter o XML do banco de dados
         query = "SELECT xml FROM imported_documents WHERE file_name = %s"
         with db_connection.cursor() as cursor:
             cursor.execute(query, (file_name,))
             result = cursor.fetchone()
             if result is None:
-                print(f"Não foi encontrado nenhum registro para o arquivo: {file_name}")
+                print(f"No data found for arquive: {file_name}")
                 return
 
             xml_data = result[0]
@@ -84,20 +80,26 @@ def parse_and_assign_geolocation(file_name, db_connection):
         for country in countries:
             country_name = country.get("name")
             
-            # Use apenas o nome do país para a localização
             location_name = country_name
             
-            # Atualiza as coordenadas usando a API Nominatim
             latitude, longitude = update_coordinates_with_nominatim(location_name)
 
-            print(f"País: {country_name}, Latitude: {latitude}, Longitude: {longitude}")
+            for country in countries:
+                country_name = country.get("name")
+
+                location_name = country_name
+                latitude, longitude = update_coordinates_with_nominatim(location_name)
+
+                print(f"Country: {country_name}, Latitude: {latitude}, Longitude: {longitude}")
+
+                send_data_to_api(country_name, latitude, longitude)
 
 
 
     except ET.ParseError as e:
-        print(f"Erro ao analisar o arquivo XML '{file_name}': {e}")
+        print(f"Error analyzing XML file: '{file_name}'. {e}")
     except psycopg2.Error as e:
-        print(f"Erro ao executar a query SQL: {e}")
+        print(f"Error executing SQL query: {e}")
 
 def update_coordinates_with_nominatim(location_name):
     nominatim_url = "https://nominatim.openstreetmap.org/search"
@@ -108,28 +110,43 @@ def update_coordinates_with_nominatim(location_name):
 
     try:
         response = requests.get(nominatim_url, params=params)
-        response.raise_for_status()  # Verifica se houve erro na requisição
+        response.raise_for_status()
 
         data = response.json()
         if data:
-            # Assume a primeira correspondência como a mais relevante
             latitude = data[0]["lat"]
             longitude = data[0]["lon"]
             return latitude, longitude
         else:
-            print(f"Não foi possível encontrar coordenadas para: {location_name}")
+            print(f"No coordinates available for: {location_name}")
             return None, None
 
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao fazer requisição para a API Nominatim: {e}")
+        print(f"Error requesting data to API Nominatim: {e}")
         return None, None
+    
+def send_data_to_api(country_name, latitude, longitude):
+    api_url = "http://api-gis:8080/api/v1/upmarkers"
 
-if __name__ == "__main__":
-    rabbitmq_connection, rabbitmq_channel = connect_rabbitmq()
-    postgresql_connection = connect_postgresql()
+    data = {
+        "country": country_name,
+        "latitude": latitude,
+        "longitude": longitude
+    }
 
     try:
-        consume_message(rabbitmq_channel, postgresql_connection)
+        response = requests.patch(api_url, json=data)
+        response.raise_for_status()
+        print(response.text)
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending data to API: {e}")
+
+if __name__ == "__main__":
+    rabbitmq, rabbitmq_channel = connectrabbitmq()
+    database = connectdatabase()
+
+    try:
+        consume_message(rabbitmq_channel, database)
     finally:
-        rabbitmq_connection.close()
-        postgresql_connection.close()
+        rabbitmq.close()
+        database.close()
