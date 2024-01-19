@@ -53,7 +53,7 @@ def connectdatabase():
 def consume_message(ch, db_connection):
     def callback(ch, method, properties, body):
         message = json.loads(body.decode('utf-8'))
-        print("\nReceive sucessfully filename: :", message["file_name"])
+        print("\nReceived sucessfully filename: :", message["file_name"])
         parse_and_assign_geolocation(message["file_name"], db_connection)
 
     ch.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
@@ -84,22 +84,12 @@ def parse_and_assign_geolocation(file_name, db_connection):
             
             latitude, longitude = update_coordinates_with_nominatim(location_name)
 
-            for country in countries:
-                country_name = country.get("name")
+            print(f"Country: {country_name}, Latitude: {latitude}, Longitude: {longitude}")
 
-                location_name = country_name
-                latitude, longitude = update_coordinates_with_nominatim(location_name)
-
-                print(f"Country: {country_name}, Latitude: {latitude}, Longitude: {longitude}")
-
-                send_data_to_api(country_name, latitude, longitude)
-
-
+            send_data_to_api(country_name, latitude, longitude)
 
     except ET.ParseError as e:
         print(f"Error analyzing XML file: '{file_name}'. {e}")
-    except psycopg2.Error as e:
-        print(f"Error executing SQL query: {e}")
 
 def update_coordinates_with_nominatim(location_name):
     nominatim_url = "https://nominatim.openstreetmap.org/search"
