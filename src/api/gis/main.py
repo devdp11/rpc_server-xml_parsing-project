@@ -62,7 +62,7 @@ def update_markers():
         if country and latitude is not None and longitude is not None:
             sql = (
                 'UPDATE countries '
-                'SET geom = \'{"type": "Point", "coordinates": [' + str(longitude) + ', ' + str(latitude) + ']}\'::jsonb '
+                'SET geom = \'{"type": "Point", "coordinates": [' + str(latitude) + ', ' + str(longitude) + ']}\'::jsonb '
                 'WHERE name = %s'
             )
             database.update(sql, values=(country,))

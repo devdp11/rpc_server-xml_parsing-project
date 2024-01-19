@@ -92,6 +92,13 @@ def parse_and_assign_geolocation(file_name, db_connection):
         print(f"Error analyzing XML file: '{file_name}'. {e}")
 
 def update_coordinates_with_nominatim(location_name):
+    country_name_mapping = {
+        "Germany": "Deutschland",
+    }
+
+    if location_name in country_name_mapping:
+        location_name = country_name_mapping[location_name]
+
     nominatim_url = "https://nominatim.openstreetmap.org/search"
     params = {
         "q": location_name,
