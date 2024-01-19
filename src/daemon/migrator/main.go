@@ -21,6 +21,7 @@ const (
 	port           = "5432"
 	rabbitMQURL    = "amqp://is:is@rabbitmq:5672/is"
 	queueName      = "queue"
+	queueCountry   = "queuecountry"
 	apicountries = "http://api-entities:8080/countries/add/"
 	apibrands = "http://api-entities:8080/brands/add/"
 	apimodels = "http://api-entities:8080/models/add/"
@@ -450,11 +451,6 @@ func insertvehicle(brandName, modelName, styleName string, vehicle Vehicle) erro
 		"city_mpg":    vehicle.CityMPG.Value,
 		"popularity":  vehicle.Popularity.Value,
 		"msrp":        vehicle.Msrp.Value,
-	}
-
-	requestBodyJSON, err := json.MarshalIndent(requestBody, "", "  ")
-	if err != nil {
-		return fmt.Errorf("Error marshaling request body: %s", err)
 	}
 
 	resp, err := client.R().
