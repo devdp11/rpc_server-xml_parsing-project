@@ -21,7 +21,7 @@ export default function StylesPage() {
 
   const fetchStyles = async () => {
     try {
-      const response = await api.GET(`/styles`);
+      const response = await api.GET(`/styles?page=${page}&itemsPerPage=${itemsPerPage}`);
       setStyles(response);
     } catch (error) {
       console.error("Error fetching styles:", error);
@@ -30,13 +30,10 @@ export default function StylesPage() {
 
   useEffect(() => {
     fetchStyles();
-  }, []);
+  }, [page, itemsPerPage]);
 
   const renderStylesRows = () => {
-    const startIndex = (page - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-
-    return styles.slice(startIndex, endIndex).map((style) => (
+    return styles.map((style) => (
       <TableRow key={style.id}>
         <TableCell component="td" scope="row">
           {style.name}

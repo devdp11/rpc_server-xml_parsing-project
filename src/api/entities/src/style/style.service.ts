@@ -5,9 +5,15 @@ import { PrismaClient } from '@prisma/client';
 export class StylesService {
     private prisma = new PrismaClient();
 
-    async findAll(): Promise<any[]> {
-        return this.prisma.style.findMany();
-    }
+    async findAll(page: number, itemsPerPage: string): Promise<any[]> {
+        const skip = (page - 1) * parseInt(itemsPerPage, 10);
+        const take = parseInt(itemsPerPage, 10);
+    
+        return this.prisma.style.findMany({
+          skip,
+          take,
+        });
+      }
 
     async findStylesByIdEndpoint(id: string): Promise<any | null> {
         return this.prisma.style.findUnique({

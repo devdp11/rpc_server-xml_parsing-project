@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, NotFoundException, Query } from '@nestjs/common';
 import { StylesService } from './style.service';
 
 @Controller('styles')
@@ -6,8 +6,11 @@ export class StylesController {
     constructor(private readonly stylesService: StylesService) {}
 
     @Get()
-    async findAll() {
-        return this.stylesService.findAll();
+    async findAll(
+      @Query('page') page: number = 1,
+      @Query('itemsPerPage') itemsPerPage: string = '5',
+    ) {
+      return this.stylesService.findAll(page, itemsPerPage);
     }
 
     @Get('id/:id')
