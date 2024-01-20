@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from "react";
 import {
   CircularProgress,
@@ -21,11 +21,13 @@ export default function ModelsPage() {
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchBrand, setSearchBrand] = useState("");
+  const [totalModels, setTotalModels] = useState(0);
 
   const fetchModels = async () => {
     try {
-      const response = await api.GET(`/models`);
-      setModels(response);
+      const response = await api.GET(`/models?page=${page}&itemsPerPage=${itemsPerPage}`);
+      setModels(response.data);
+      setTotalModels(response.total);
     } catch (error) {
       console.error("Error fetching models:", error);
     }
@@ -33,7 +35,7 @@ export default function ModelsPage() {
 
   useEffect(() => {
     fetchModels();
-  }, []);
+  }, [page, itemsPerPage]);
 
   useEffect(() => {
     const filtered = searchBrand
@@ -46,17 +48,12 @@ export default function ModelsPage() {
   }, [models, searchBrand]);
 
   const renderModelsRows = () => {
-    const startIndex = (page - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-
-    return filteredModels.slice(startIndex, endIndex).map((model) => (
+    return filteredModels.map((model) => (
       <TableRow key={model.id}>
         <TableCell component="td" scope="row">
           {model.name}
         </TableCell>
-        <TableCell component="td">
-          {model.brandName}
-        </TableCell>
+        <TableCell component="td">{model.brandName}</TableCell>
       </TableRow>
     ));
   };
@@ -66,7 +63,8 @@ export default function ModelsPage() {
   };
 
   const handleItemsPerPageChange = (event) => {
-    setItemsPerPage(parseInt(event.target.value, 10));
+    const newItemsPerPage = parseInt(event.target.value, 10);
+    setItemsPerPage(newItemsPerPage);
     setPage(1);
   };
 
@@ -78,7 +76,6 @@ export default function ModelsPage() {
   return (
     <main>
       <h1>Model's Page</h1>
-
 
       <TextField
         label="Search by Brand"
@@ -95,9 +92,7 @@ export default function ModelsPage() {
               <TableCell component="th" width={"1px"} align="center">
                 Name
               </TableCell>
-              <TableCell>
-                Brand
-              </TableCell>
+              <TableCell>Brand</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -114,7 +109,7 @@ export default function ModelsPage() {
         </Table>
       </TableContainer>
 
-      <div style={{ display: 'flex', marginTop: 8 }}>
+      <div style={{ display: "flex", marginTop: 8 }}>
         <Pagination
           style={{ marginRight: 16 }}
           variant="outlined"
@@ -122,12 +117,12 @@ export default function ModelsPage() {
           color="primary"
           onChange={handlePageChange}
           page={page}
-          count={Math.ceil(filteredModels.length / itemsPerPage)}
+          count={Math.ceil(totalModels / itemsPerPage)}
         />
 
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: "center" }}>
           <label>
-            Items per page:{' '}
+            Items per page:{" "}
             <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
               <option value={5}>5</option>
               <option value={10}>10</option>

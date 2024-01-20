@@ -5,15 +5,28 @@ import { PrismaClient } from '@prisma/client';
 export class ModelsService {
     private prisma = new PrismaClient();
 
-    async findAll(): Promise<any[]> {
-        return this.prisma.model.findMany({
+    async findAll(page: number, itemsPerPage: string): Promise<[any[], number]> {
+        const skip = (page - 1) * parseInt(itemsPerPage, 10);
+        const take = parseInt(itemsPerPage, 10);
+      
+        const [models, totalModels] = await Promise.all([
+          this.prisma.model.findMany({
             include: {
-                brand: true,
+              brand: true,
             },
-        });    
-    }
+            skip,
+            take,
+          }),
+          this.prisma.model.count(),
+        ]);
+      
+        return [models, totalModels];
+      }
+      
+    
+    
 
-    async findModelsByBrandEndpoint(brandName: string): Promise<any | null> {
+      async findModelsByBrandEndpoint(brandName: string): Promise<any | null> {
         return this.prisma.model.findMany({
             include: {
                 brand: true,
