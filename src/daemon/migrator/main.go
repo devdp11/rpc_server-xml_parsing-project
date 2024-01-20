@@ -20,8 +20,8 @@ const (
 	dbHost         = "db-xml"
 	port           = "5432"
 	rabbitMQURL    = "amqp://is:is@rabbitmq:5672/is"
-	queueName      = "queue"
-	queueCountry   = "queuecountry"
+	queueName      = "MIGRATE_DATA"
+	
 	apicountries = "http://api-entities:8080/countries/add/"
 	apibrands = "http://api-entities:8080/brands/add/"
 	apimodels = "http://api-entities:8080/models/add/"

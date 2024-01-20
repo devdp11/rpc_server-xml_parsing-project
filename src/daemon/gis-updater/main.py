@@ -53,12 +53,21 @@ def connectdatabase():
 def consume_message(ch, db_connection):
     def callback(ch, method, properties, body):
         message = json.loads(body.decode('utf-8'))
-        print("\nReceived sucessfully filename: :", message["file_name"])
-        parse_and_assign_geolocation(message["file_name"], db_connection)
+        print("\nReceived successfully filename:", message["file_name"])
 
-    ch.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
-    print(f"Waiting for messages on '{queue_name}'.")
+        # Verifica se a fila da mensagem é a desejada
+        if properties and properties.headers and properties.headers.get("queue_name") == "UPDATE_GIS":
+            parse_and_assign_geolocation(message["file_name"], db_connection)
+        else:
+            print("Skipping message from different queue.")
+
+    ch.queue_declare(queue="UPDATE_GIS", durable=True)
+    ch.basic_consume(queue="UPDATE_GIS", on_message_callback=callback, auto_ack=True)
+    print("Waiting for messages on 'UPDATE_GIS'.")
     ch.start_consuming()
+
+
+
 
 def parse_and_assign_geolocation(file_name, db_connection):
     try:

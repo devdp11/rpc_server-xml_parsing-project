@@ -62,96 +62,101 @@ func connectrabbitmq() (*amqp.Connection, *amqp.Channel, error) {
     return conn, ch, nil
 }
 
-func sendmessage(fileName string, createdOn time.Time, updatedOn time.Time) {
-	conn, ch, err := connectrabbitmq()
-	if err != nil {
-		log.Fatalf("Error connecting with RabbitMQ: %s", err)
-	}
-	defer conn.Close()
-	defer ch.Close()
+func sendmessage(queueName, fileName string, createdOn time.Time, updatedOn time.Time) {
+    conn, ch, err := connectrabbitmq()
+    if err != nil {
+        log.Fatalf("Error connecting with RabbitMQ: %s", err)
+    }
+    defer conn.Close()
+    defer ch.Close()
 
-	q, err := ch.QueueDeclare(
-		queueName,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		log.Fatalf("Error declaring Queue: %s", err)
-	}
+    q, err := ch.QueueDeclare(
+        queueName,
+        true,
+        false,
+        false,
+        false,
+        nil,
+    )
+    if err != nil {
+        log.Fatalf("Error declaring Queue: %s", err)
+    }
 
-	message := map[string]interface{}{
-		"file_name":  fileName,
-		"created_on": createdOn,
-		"updated_on": updatedOn,
-	}
+    message := map[string]interface{}{
+        "file_name":  fileName,
+        "created_on": createdOn,
+        "updated_on": updatedOn,
+    }
 
-	jsonData, err := json.Marshal(message)
-	if err != nil {
-		log.Printf("Error converting to JSON: %s\n", err)
-		return
-	}
+    jsonData, err := json.Marshal(message)
+    if err != nil {
+        log.Printf("Error converting to JSON: %s\n", err)
+        return
+    }
 
-	body := string(jsonData)
-	err = ch.Publish(
-		"",
-		q.Name,
-		false,
-		false,
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "application/json",
-			Body:         []byte(body),
-		})
-	if err != nil {
-		log.Fatalf("Error publishing message: %s", err)
-	}
+    body := string(jsonData)
+    err = ch.Publish(
+        "",
+        q.Name,
+        false,
+        false,
+        amqp.Publishing{
+            DeliveryMode: amqp.Persistent,
+            ContentType:  "application/json",
+            Body:         []byte(body),
+        })
+    if err != nil {
+        log.Fatalf("Error publishing message: %s", err)
+    }
 
-	fmt.Println("Message sent to RabbitMQ successfully!")
+    fmt.Printf("Message sent to RabbitMQ successfully! Queue: %s\n", queueName)
 }
 
 func checkfiles(db *sql.DB) {
-	fmt.Println("Verifying new XML...")
+    fmt.Println("Verifying new XML...")
 
-	ticker := time.NewTicker(60 * time.Second)
-	defer ticker.Stop()
+    ticker := time.NewTicker(60 * time.Second)
+    defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			query := ` SELECT file_name, created_on, updated_on FROM imported_documents WHERE (created_on > $1 OR updated_on > $1) AND deleted_on IS NULL `
+    for {
+        select {
+        case <-ticker.C:
+            query := ` SELECT file_name, created_on, updated_on FROM imported_documents WHERE (created_on > $1 OR updated_on > $1) AND deleted_on IS NULL `
 
-			timer := time.Now().Add(-60 * time.Second)
+            timer := time.Now().Add(-60 * time.Second)
 
-			rows, err := db.Query(query, timer)
-			if err != nil {
-				log.Fatal("Error executing search:", err)
-			}
+            rows, err := db.Query(query, timer)
+            if err != nil {
+                log.Fatal("Error executing search:", err)
+            }
 
-			for rows.Next() {
-				var fileName string
-				var createdOn time.Time
-				var updatedOn time.Time
-				err := rows.Scan(&fileName, &createdOn, &updatedOn)
-				if err != nil {
-					log.Fatal("Error on select query:", err)
-				}
+            for rows.Next() {
+                var fileName string
+                var createdOn time.Time
+                var updatedOn time.Time
+                err := rows.Scan(&fileName, &createdOn, &updatedOn)
+                if err != nil {
+                    log.Fatal("Error on select query:", err)
+                }
 
-				fmt.Printf("XML found: \nNome: %s\nCreated: %s\nUpdated: %s\n", fileName, createdOn, updatedOn)
+                fmt.Printf("XML found: \nNome: %s\nCreated: %s\nUpdated: %s\n", fileName, createdOn, updatedOn)
 
-				sendmessage(fileName, createdOn, updatedOn)
-			}
+                // Envia mensagem para a fila MIGRATE_DATA
+                sendmessage("MIGRATE_DATA", fileName, createdOn, updatedOn)
 
-			if err := rows.Err(); err != nil {
-				log.Fatal("Error during result interaction:", err)
-			}
+                // Envia mensagem para a fila UPDATE_GIS
+                sendmessage("UPDATE_GIS", fileName, createdOn, updatedOn)
+            }
 
-			rows.Close()
-		}
-	}
+            if err := rows.Err(); err != nil {
+                log.Fatal("Error during result interaction:", err)
+            }
+
+            rows.Close()
+        }
+    }
 }
+
 
 func main() {
 	db := connectdatabase()
