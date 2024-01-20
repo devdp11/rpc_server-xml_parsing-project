@@ -1,18 +1,3 @@
-'''import sys
-import time
-
-POLLING_FREQ = int(sys.argv[1]) if len(sys.argv) >= 2 else 60
-ENTITIES_PER_ITERATION = int(sys.argv[2]) if len(sys.argv) >= 3 else 10
-
-if __name__ == "__main__":
-
-    while True:
-        print(f"Getting up to {ENTITIES_PER_ITERATION} entities without coordinates...")
-        # !TODO: 1- Use api-gis to retrieve a fixed amount of entities without coordinates (e.g. 100 entities per iteration, use ENTITIES_PER_ITERATION)
-        # !TODO: 2- Use the entity information to retrieve coordinates from an external API
-        # !TODO: 3- Submit the changes
-        time.sleep(POLLING_FREQ)'''
-
 import json
 import pika
 import xml.etree.ElementTree as ET
@@ -23,7 +8,7 @@ rabbitmq_user = "is"
 rabbitmq_password = "is"
 rabbitmq_host = "rabbitmq"
 rabbitmq_port = 5672
-queue_name = "queue"
+queue_name = "UPDATE_GIS"
 
 rabbitmq_url = f"amqp://is:is@rabbitmq:5672/is"
 
@@ -54,20 +39,12 @@ def consume_message(ch, db_connection):
     def callback(ch, method, properties, body):
         message = json.loads(body.decode('utf-8'))
         print("\nReceived successfully filename:", message["file_name"])
-
-        # Verifica se a fila da mensagem é a desejada
-        if properties and properties.headers and properties.headers.get("queue_name") == "UPDATE_GIS":
-            parse_and_assign_geolocation(message["file_name"], db_connection)
-        else:
-            print("Skipping message from different queue.")
+        parse_and_assign_geolocation(message["file_name"], db_connection)
 
     ch.queue_declare(queue="UPDATE_GIS", durable=True)
     ch.basic_consume(queue="UPDATE_GIS", on_message_callback=callback, auto_ack=True)
     print("Waiting for messages on 'UPDATE_GIS'.")
     ch.start_consuming()
-
-
-
 
 def parse_and_assign_geolocation(file_name, db_connection):
     try:
@@ -101,16 +78,9 @@ def parse_and_assign_geolocation(file_name, db_connection):
         print(f"Error analyzing XML file: '{file_name}'. {e}")
 
 def update_coordinates_with_nominatim(location_name):
-    country_name_mapping = {
-        "Germany": "Deutschland",
-    }
-
-    if location_name in country_name_mapping:
-        location_name = country_name_mapping[location_name]
-
     nominatim_url = "https://nominatim.openstreetmap.org/search"
     params = {
-        "q": location_name,
+        "country": location_name,
         "format": "json",
     }
 

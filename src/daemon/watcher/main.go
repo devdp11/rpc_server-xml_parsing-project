@@ -27,6 +27,8 @@ const (
 	queueName   = "queue"
 )
 
+var ch *amqp.Channel
+
 func connectdatabase() *sql.DB {
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
 		dbUser, dbPassword, dbName, dbHost, port)
@@ -63,24 +65,17 @@ func connectrabbitmq() (*amqp.Connection, *amqp.Channel, error) {
 }
 
 func sendmessage(queueName, fileName string, createdOn time.Time, updatedOn time.Time) {
-    conn, ch, err := connectrabbitmq()
-    if err != nil {
-        log.Fatalf("Error connecting with RabbitMQ: %s", err)
-    }
-    defer conn.Close()
-    defer ch.Close()
-
-    q, err := ch.QueueDeclare(
-        queueName,
-        true,
-        false,
-        false,
-        false,
-        nil,
-    )
-    if err != nil {
-        log.Fatalf("Error declaring Queue: %s", err)
-    }
+	q, err := ch.QueueDeclare(
+		queueName,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("Error declaring Queue: %s", err)
+	}
 
     message := map[string]interface{}{
         "file_name":  fileName,
@@ -141,10 +136,10 @@ func checkfiles(db *sql.DB) {
 
                 fmt.Printf("XML found: \nNome: %s\nCreated: %s\nUpdated: %s\n", fileName, createdOn, updatedOn)
 
-                // Envia mensagem para a fila MIGRATE_DATA
                 sendmessage("MIGRATE_DATA", fileName, createdOn, updatedOn)
-
-                // Envia mensagem para a fila UPDATE_GIS
+                
+                time.Sleep(5 * time.Second)
+                
                 sendmessage("UPDATE_GIS", fileName, createdOn, updatedOn)
             }
 
@@ -157,9 +152,16 @@ func checkfiles(db *sql.DB) {
     }
 }
 
-
 func main() {
 	db := connectdatabase()
+
+	conn, channel, err := connectrabbitmq()
+	checkErr(err)
+	defer conn.Close()
+	defer channel.Close()
+
+	ch = channel
+
 	checkfiles(db)
 	defer db.Close()
 }
