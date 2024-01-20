@@ -46,7 +46,7 @@ def get_markers():
         return jsonify(markers)
 
     except Exception as e:
-        return f"Ocorreu um erro: {str(e)}"
+        return f"An error occurred: {str(e)}"
 
 @app.route('/api/v1/upmarkers', methods=['PATCH'])
 def update_markers():

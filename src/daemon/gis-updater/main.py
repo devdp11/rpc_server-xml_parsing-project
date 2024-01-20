@@ -56,9 +56,9 @@ def parse_and_assign_geolocation(file_name, db_connection):
                 print(f"No data found for arquive: {file_name}")
                 return
 
-            xml_data = result[0]
+            data = result[0]
 
-        tree = ET.ElementTree(ET.fromstring(xml_data))
+        tree = ET.ElementTree(ET.fromstring(data))
         root = tree.getroot()
 
         countries = root.findall(".//Countries/Country")
