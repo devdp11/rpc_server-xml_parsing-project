@@ -137,7 +137,9 @@ func checkfiles(db *sql.DB) {
                 fmt.Printf("XML found: \nNome: %s\nCreated: %s\nUpdated: %s\n", fileName, createdOn, updatedOn)
 
                 sendmessage("MIGRATE_DATA", fileName, createdOn, updatedOn)
-
+                
+                time.Sleep(5 * time.Second)
+                
                 sendmessage("UPDATE_GIS", fileName, createdOn, updatedOn)
             }
 
