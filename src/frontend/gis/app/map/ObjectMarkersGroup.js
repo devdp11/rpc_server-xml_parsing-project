@@ -42,7 +42,7 @@ function ObjectMarkersGroup() {
                     id: data.properties.id,
                     country: data.properties.country,
                     name: data.properties.name,
-                    imgUrl: "https://cdn-icons-png.flaticon.com/512/805/805401.png",
+                    imgUrl: "https://cdn-icons-png.flaticon.com/512/3774/3774278.png",
                 }
             }));
     
