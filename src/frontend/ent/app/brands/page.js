@@ -21,17 +21,21 @@ export default function BrandsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchCountry, setSearchCountry] = useState("");
   const [filteredBrands, setFilteredBrands] = useState([]);
+  const [totalBrands, setTotalBrands] = useState(0);
 
   const fetchBrands = async () => {
     try {
-      let endpoint = "/brands";
+      let endpoint = `/brands?page=${page}&itemsPerPage=${itemsPerPage}`;
 
       if (searchCountry) {
-        endpoint = `/brands/country/${encodeURIComponent(searchCountry)}`;
+        endpoint = `/brands/country/${encodeURIComponent(
+          searchCountry
+        )}?page=${page}&itemsPerPage=${itemsPerPage}`;
       }
 
       const response = await api.GET(endpoint);
-      setBrands(response);
+      setBrands(response.data);
+      setTotalBrands(response.total);
     } catch (error) {
       console.error("Error fetching brands:", error);
     }
@@ -39,7 +43,7 @@ export default function BrandsPage() {
 
   useEffect(() => {
     fetchBrands();
-  }, [searchCountry]);
+  }, [page, itemsPerPage, searchCountry]);
 
   useEffect(() => {
     const filtered = searchCountry
@@ -60,9 +64,7 @@ export default function BrandsPage() {
         <TableCell component="td" scope="row">
           {brand.name}
         </TableCell>
-        <TableCell component="td">
-          {brand.countryName}
-        </TableCell>
+        <TableCell component="td">{brand.countryName}</TableCell>
       </TableRow>
     ));
   };
@@ -99,9 +101,7 @@ export default function BrandsPage() {
               <TableCell component="th" width={"1px"} align="center">
                 Name
               </TableCell>
-              <TableCell>
-                Country
-              </TableCell>
+              <TableCell>Country</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -118,7 +118,7 @@ export default function BrandsPage() {
         </Table>
       </TableContainer>
 
-      <div style={{ display: 'flex', marginTop: 8 }}>
+      <div style={{ display: "flex", marginTop: 8 }}>
         <Pagination
           style={{ marginRight: 16 }}
           variant="outlined"
@@ -126,12 +126,12 @@ export default function BrandsPage() {
           color="primary"
           onChange={handlePageChange}
           page={page}
-          count={Math.ceil(filteredBrands.length / itemsPerPage)}
+          count={Math.ceil(totalBrands / itemsPerPage)}
         />
 
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: "center" }}>
           <label>
-            Items per page:{' '}
+            Items per page:{" "}
             <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
               <option value={5}>5</option>
               <option value={10}>10</option>

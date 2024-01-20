@@ -7,10 +7,15 @@ export class StylesController {
 
     @Get()
     async findAll(
-      @Query('page') page: number = 1,
-      @Query('itemsPerPage') itemsPerPage: string = '5',
+        @Query('page') page: number = 1,
+        @Query('itemsPerPage') itemsPerPage: string = '5',
     ) {
-      return this.stylesService.findAll(page, itemsPerPage);
+        const [styles, totalStyles] = await this.stylesService.findAll(page, itemsPerPage);
+
+        return {
+        data: styles,
+        total: totalStyles,
+        };
     }
 
     @Get('id/:id')

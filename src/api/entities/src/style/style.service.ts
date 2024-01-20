@@ -5,14 +5,19 @@ import { PrismaClient } from '@prisma/client';
 export class StylesService {
     private prisma = new PrismaClient();
 
-    async findAll(page: number, itemsPerPage: string): Promise<any[]> {
+    async findAll(page: number, itemsPerPage: string): Promise<[any[], number]> {
         const skip = (page - 1) * parseInt(itemsPerPage, 10);
         const take = parseInt(itemsPerPage, 10);
     
-        return this.prisma.style.findMany({
-          skip,
-          take,
-        });
+        const [styles, totalStyles] = await Promise.all([
+          this.prisma.style.findMany({
+            skip,
+            take,
+          }),
+          this.prisma.style.count(),
+        ]);
+    
+        return [styles, totalStyles];
       }
 
     async findStylesByIdEndpoint(id: string): Promise<any | null> {

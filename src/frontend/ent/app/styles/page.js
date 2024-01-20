@@ -18,11 +18,13 @@ export default function StylesPage() {
   const [styles, setStyles] = useState([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [totalStyles, setTotalStyles] = useState(0);
 
   const fetchStyles = async () => {
     try {
       const response = await api.GET(`/styles?page=${page}&itemsPerPage=${itemsPerPage}`);
-      setStyles(response);
+      setStyles(response.data);
+      setTotalStyles(response.total);
     } catch (error) {
       console.error("Error fetching styles:", error);
     }

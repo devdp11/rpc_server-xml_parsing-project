@@ -5,26 +5,49 @@ import { PrismaClient } from '@prisma/client';
 export class BrandsService {
     private prisma = new PrismaClient();
 
-    async findAll(): Promise<any[]> {
-        return this.prisma.brand.findMany({
+    async findAll(page: number, itemsPerPage: string): Promise<[any[], number]> {
+        const skip = (page - 1) * parseInt(itemsPerPage, 10);
+        const take = parseInt(itemsPerPage, 10);
+    
+        const [brands, totalBrands] = await Promise.all([
+          this.prisma.brand.findMany({
             include: {
-                country: true,
+              country: true,
             },
-        });
+            skip,
+            take,
+          }),
+          this.prisma.brand.count(),
+        ]);
+    
+        return [brands, totalBrands];
     }
 
-    async findBrandByCountryEndpoint(countryName: string): Promise<any | null> {
-        return this.prisma.brand.findMany({
-            include: {
-                country: true,
+      async findBrandByCountryEndpoint(countryName: string, page: number, itemsPerPage: string): Promise<any[] | null> {
+        const skip = (page - 1) * parseInt(itemsPerPage, 10);
+        const take = parseInt(itemsPerPage, 10);
+    
+        const brandsWithCountry = await this.prisma.brand.findMany({
+          include: {
+            country: true,
+          },
+          where: {
+            country: {
+              name: countryName,
             },
-            where: {
-                country: {
-                    name: countryName,
-                },
-            },
+          },
+          skip,
+          take,
         });
-    }
+    
+        return brandsWithCountry.map((brand) => ({
+          id: brand.id,
+          name: brand.name,
+          countryName: brand.country.name,
+          createdOn: brand.createdOn,
+          updatedOn: brand.updatedOn,
+        }));
+      }
 
     async findBrandsByIdEndpoint(id: string): Promise<any | null> {
         return this.prisma.brand.findUnique({

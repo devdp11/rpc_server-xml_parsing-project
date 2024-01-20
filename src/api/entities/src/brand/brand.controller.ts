@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Delete, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Delete, NotFoundException, Query } from '@nestjs/common';
 import { BrandsService } from './brand.service';
 
 @Controller('brands')
@@ -6,37 +6,26 @@ export class BrandsController {
     constructor(private readonly brandsService: BrandsService) {}
 
     @Get()
-    async findAll() {
-        const brandsWithCountry = await this.brandsService.findAll();
-        const response = brandsWithCountry.map(brand => ({
-            id: brand.id,
-            name: brand.name,
-            countryName: brand.country.name,
-            createdOn: brand.createdOn,
-            updatedOn: brand.updatedOn,
-        }));
-        
-        return response;
-    }
+    async findAll(
+        @Query('page') page: number = 1,
+        @Query('itemsPerPage') itemsPerPage: string = '5',
+      ) {
+        const [brands, totalBrands] = await this.brandsService.findAll(page, itemsPerPage);
+    
+        return {
+          data: brands,
+          total: totalBrands,
+        };
+      }
 
-    @Get('country/:countryName')
-    async findBrandByCountryEndpoint(@Param('countryName') countryName: string) {
-        const brand = await this.brandsService.findBrandByCountryEndpoint(countryName);
-
-        if (!brand) {
-            throw new NotFoundException(`Brand with country name ${countryName} not found.`);
-        }
-
-        const response = brand.map(brand => ({
-            id: brand.id,
-            name: brand.name,
-            countryName: brand.country.name,
-            createdOn: brand.createdOn,
-            updatedOn: brand.updatedOn,
-        }));
-
-        return response;
-    }
+      @Get('country/:countryName')
+      async findBrandByCountryEndpoint(
+        @Param('countryName') countryName: string,
+        @Query('page') page: number = 1,
+        @Query('itemsPerPage') itemsPerPage: string = '5',
+      ) {
+        return this.brandsService.findBrandByCountryEndpoint(countryName, page, itemsPerPage);
+      }
 
     @Get('id/:id')
     async findBrandsByIdEndpoint(@Param('id') id: string) {
