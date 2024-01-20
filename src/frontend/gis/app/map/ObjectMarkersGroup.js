@@ -8,7 +8,7 @@ function ObjectMarkersGroup() {
     const map = useMap();
     const [geom, setGeom] = useState([]);
     const [bounds, setBounds] = useState(map.getBounds());
-    const api = useAPI();
+    const {GET} = useAPI();
 
     useEffect(() => {
         const cb = () => {
@@ -27,7 +27,7 @@ function ObjectMarkersGroup() {
 
     const fetchData = async () => {
         try {
-            const apiData = await api.GET('/markers');
+            const apiData = await GET('/markers');
     
             const geomData = apiData.map(data => ({
                 type: "feature",
