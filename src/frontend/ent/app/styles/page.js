@@ -60,7 +60,7 @@ export default function StylesPage() {
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
           <TableHead>
             <TableRow sx={{ backgroundColor: "lightgray" }}>
-              <TableCell component="th" width={"1px"} align="center">
+              <TableCell component="th" width={"1px"} >
                 Name
               </TableCell>
             </TableRow>
