@@ -5,14 +5,27 @@ import { PrismaClient } from '@prisma/client';
 export class VehiclesService {
     private prisma = new PrismaClient();
 
-    async findAll(): Promise<any[]> {
-        return this.prisma.vehicle.findMany({
-            include: {
-                brand: true,
-                model: true,
-                style: true,
-            },
-        });
+    async findAll(page: number, itemsPerPage: string): Promise<[any[], number]> {
+        try {
+            const skip = (page - 1) * parseInt(itemsPerPage, 10);
+            const take = parseInt(itemsPerPage, 10);
+            
+            const vehicles = await this.prisma.vehicle.findMany({
+                include: {
+                    brand: true,
+                    model: true,
+                    style: true,
+                },
+                skip,
+                take,
+            });
+
+            const totalVehicles = await this.prisma.vehicle.count();
+
+            return [vehicles, totalVehicles];
+        } catch (error) {
+            throw new HttpException('Error fetching vehicles', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     async findVehiclesByBrandEndpoint(brandName: string): Promise<any | null> {

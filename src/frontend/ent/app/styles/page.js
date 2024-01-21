@@ -80,27 +80,27 @@ export default function StylesPage() {
       </TableContainer>
 
       <div style={{ display: 'flex', marginTop: 8 }}>
-            <Pagination
-            style={{ marginRight: 16 }}
-            variant="outlined"
-            shape="rounded"
-            color="primary"
-            onChange={handlePageChange}
-            page={page}
-            count={Math.ceil(styles.length / itemsPerPage)}
-            />
+        <Pagination
+          style={{ marginRight: 16 }}
+          variant="outlined"
+          shape="rounded"
+          color="primary"
+          onChange={handlePageChange}
+          page={page}
+          count={Math.ceil(totalStyles / itemsPerPage)}
+        />
 
-            <div style={{ textAlign: 'center' }}>
-            <label>
-                Items per page:{' '}
-                <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                </select>
-            </label>
-            </div>
+        <div style={{ textAlign: 'center' }}>
+          <label>
+            Items per page:{' '}
+            <select onChange={handleItemsPerPageChange} value={itemsPerPage}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+          </label>
         </div>
+      </div>
     </main>
   );
 }

@@ -17,25 +17,26 @@ import useApi from "../Hooks/useAPI";
 export default function BrandsPage() {
   const api = useApi();
   const [brands, setBrands] = useState([]);
+  const [filteredBrands, setFilteredBrands] = useState([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchCountry, setSearchCountry] = useState("");
-  const [filteredBrands, setFilteredBrands] = useState([]);
   const [totalBrands, setTotalBrands] = useState(0);
 
   const fetchBrands = async () => {
     try {
-      let endpoint = `/brands?page=${page}&itemsPerPage=${itemsPerPage}`;
+      const response = await api.GET(`/brands?page=${page}&itemsPerPage=${itemsPerPage}`);
 
-      if (searchCountry) {
-        endpoint = `/brands/country/${encodeURIComponent(
-          searchCountry
-        )}?page=${page}&itemsPerPage=${itemsPerPage}`;
-      }
-
-      const response = await api.GET(endpoint);
       setBrands(response.data);
       setTotalBrands(response.total);
+
+      const filtered = searchCountry
+        ? response.data.filter((brand) =>
+            brand.countryName.toLowerCase().includes(searchCountry.toLowerCase())
+          )
+        : response.data;
+      
+      setFilteredBrands(filtered);
     } catch (error) {
       console.error("Error fetching brands:", error);
     }
@@ -43,7 +44,7 @@ export default function BrandsPage() {
 
   useEffect(() => {
     fetchBrands();
-  }, [page, itemsPerPage, searchCountry]);
+  }, [page, itemsPerPage]);
 
   useEffect(() => {
     const filtered = searchCountry
@@ -56,10 +57,7 @@ export default function BrandsPage() {
   }, [brands, searchCountry]);
 
   const renderBrandRows = () => {
-    const startIndex = (page - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-
-    return filteredBrands.slice(startIndex, endIndex).map((brand) => (
+    return filteredBrands.map((brand) => (
       <TableRow key={brand.id}>
         <TableCell component="td" scope="row">
           {brand.name}
@@ -71,15 +69,18 @@ export default function BrandsPage() {
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
+    setSearchCountry("");
   };
 
   const handleItemsPerPageChange = (event) => {
-    setItemsPerPage(parseInt(event.target.value, 10));
+    const newItemsPerPage = parseInt(event.target.value, 10);
+    setItemsPerPage(newItemsPerPage);
     setPage(1);
   };
 
-  const handleSearchChange = (event) => {
+  const handleSearchCountryChange = (event) => {
     setSearchCountry(event.target.value);
+    setPage(1);
   };
 
   return (
@@ -90,7 +91,7 @@ export default function BrandsPage() {
         label="Search by Country"
         variant="outlined"
         value={searchCountry}
-        onChange={handleSearchChange}
+        onChange={handleSearchCountryChange}
         style={{ marginBottom: 16 }}
       />
 
@@ -105,7 +106,7 @@ export default function BrandsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {brands.length > 0 ? (
+            {filteredBrands.length > 0 ? (
               renderBrandRows()
             ) : (
               <TableRow>
