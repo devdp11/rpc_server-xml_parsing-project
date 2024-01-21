@@ -28,12 +28,6 @@ export default function ModelsPage() {
       const response = await api.GET(`/models?page=${page}&itemsPerPage=${itemsPerPage}`);
       setModels(response.data);
       setTotalModels(response.total);
-      const filtered = searchBrand
-        ? response.data.filter((model) =>
-            model.brandName.toLowerCase().includes(searchBrand.toLowerCase())
-          )
-        : response.data;
-      setFilteredModels(filtered);
     } catch (error) {
       console.error("Error fetching models:", error);
     }
@@ -66,7 +60,7 @@ export default function ModelsPage() {
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-    setSearchBrand("");
+    
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -77,7 +71,7 @@ export default function ModelsPage() {
 
   const handleSearchBrandChange = (event) => {
     setSearchBrand(event.target.value);
-    setPage(1);
+    
   };
 
   return (

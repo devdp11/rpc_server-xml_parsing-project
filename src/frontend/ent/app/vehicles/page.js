@@ -20,28 +20,39 @@ export default function VehiclesPage() {
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchBrand, setSearchBrand] = useState("");
+  const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [totalVehicles, setTotalVehicles] = useState(0);
 
   const fetchVehicles = async () => {
     try {
-      const response = await api.GET(`/vehicles?page=${page}&itemsPerPage=${itemsPerPage}`);
+      const response = await api.GET(
+        `/vehicles?page=${page}&itemsPerPage=${itemsPerPage}`
+      );
       setVehicles(response.data);
       setTotalVehicles(response.total);
+      applySearchFilter(response.data);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
     }
   };
 
+  const applySearchFilter = (data) => {
+    const filtered = searchBrand
+      ? data.filter((vehicle) =>
+          vehicle.brandName.toLowerCase().includes(searchBrand.toLowerCase())
+        )
+      : data;
+    setFilteredVehicles(filtered);
+  };
+
   useEffect(() => {
     fetchVehicles();
-  }, [page, itemsPerPage]);
-
+  }, [page, itemsPerPage, searchBrand]);
+  
   const renderVehiclesRows = () => {
-    return vehicles.map((vehicle) => (
+    return filteredVehicles.map((vehicle) => (
       <TableRow key={vehicle.id}>
-        <TableCell component="td" scope="row">
-          {vehicle.brandName}
-        </TableCell>
+        <TableCell component="td">{vehicle.brandName}</TableCell>
         <TableCell component="td">{vehicle.modelName}</TableCell>
         <TableCell component="td">{vehicle.year}</TableCell>
         <TableCell component="td">{vehicle.horsepower}</TableCell>
@@ -55,9 +66,10 @@ export default function VehiclesPage() {
       </TableRow>
     ));
   };
-
+  
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
+    setSearchBrand("");
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -68,7 +80,6 @@ export default function VehiclesPage() {
 
   const handleSearchBrandChange = (event) => {
     setSearchBrand(event.target.value);
-    setPage(1);
   };
 
   return (

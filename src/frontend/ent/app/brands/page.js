@@ -26,17 +26,8 @@ export default function BrandsPage() {
   const fetchBrands = async () => {
     try {
       const response = await api.GET(`/brands?page=${page}&itemsPerPage=${itemsPerPage}`);
-
       setBrands(response.data);
       setTotalBrands(response.total);
-
-      const filtered = searchCountry
-        ? response.data.filter((brand) =>
-            brand.countryName.toLowerCase().includes(searchCountry.toLowerCase())
-          )
-        : response.data;
-      
-      setFilteredBrands(filtered);
     } catch (error) {
       console.error("Error fetching brands:", error);
     }
@@ -69,7 +60,7 @@ export default function BrandsPage() {
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-    setSearchCountry("");
+    
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -80,7 +71,6 @@ export default function BrandsPage() {
 
   const handleSearchCountryChange = (event) => {
     setSearchCountry(event.target.value);
-    setPage(1);
   };
 
   return (
